@@ -31,8 +31,8 @@ end
 
 # Load user info, statuses, friends/followers unless we already got them
 def load_user_data(username_or_id)
-  if (File.exist? USERS_DIR + "%s.txt" % username_or_id.to_s) or (File.exist? USERS_SN_DIR + "%s.txt" % username_or_id.to_s)
-    puts "Skipping user %d..." % username_or_id.to_s
+  if (File.exist? USERS_DIR + "%s.txt" % username_or_id.to_s) or (File.symlink? USERS_SN_DIR + "%s.txt" % username_or_id.to_s)
+    puts "Skipping user %s..." % username_or_id.to_s
   else
     t = MTwitter.new
     uinfo = t.user(username_or_id)

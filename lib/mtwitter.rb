@@ -2,6 +2,7 @@
 require 'twitter'
 require 'json'
 require 'singleton'
+require_relative 'mtwitter_config'
 
 class MTwitterRateLimitError < StandardError
 end
@@ -131,35 +132,45 @@ class MTwitter
   # Get information about a user's tweets
   def user_tweets(user, count=10)
     puts "Getting Last %d Statuses for User %s..." % [count, user.to_s]
-    statuses = @MT.user_timeline(user, {:count => count, :trim_user => true, :include_rts => true, :include_entities => true})
-    status_data = statuses.map do |s|
-      {
-        :user_id => s.user.id,
-        :created_at => s.created_at,
-        :id => s.id,
-        :text => s.text,
-        :source => s.source,
-        :truncated => s["truncated"],
-        :in_reply_to_user_id => s["in_reply_to_user_id"],
-        :in_reply_to_screen_name => s["in_reply_to_screen_name"],
-        :geo => s["geo"],
-        :coordinates => s["coordinates"],
-        :place => parse_place(s["place"]),
-        :contributors => s["contributors"],
-        :retweet_count => s["retweet_count"],
-        :entities => parse_entities(s.attrs["entities"]),
-        :retweeted_status => parse_retweeted_status(s["retweeted_status"])
-      }
+    begin
+      statuses = @MT.user_timeline(user, {:count => count, :trim_user => true, :include_rts => true, :include_entities => true})
+      status_data = statuses.map do |s|
+        {
+          :user_id => s.user.id,
+          :created_at => s.created_at,
+          :id => s.id,
+          :text => s.text,
+          :source => s.source,
+          :truncated => s["truncated"],
+          :in_reply_to_user_id => s["in_reply_to_user_id"],
+          :in_reply_to_screen_name => s["in_reply_to_screen_name"],
+          :geo => s["geo"],
+          :coordinates => s["coordinates"],
+          :place => parse_place(s["place"]),
+          :contributors => s["contributors"],
+          :retweet_count => s["retweet_count"],
+          :entities => parse_entities(s.attrs["entities"]),
+          :retweeted_status => parse_retweeted_status(s["retweeted_status"])
+        }
+      end
+      status_data
+    rescue Twitter::Error::Unauthorized
+      puts "Failed for %s (Protected)" % user.to_s
+      []
     end
-    status_data
   end
   
   # Get list of friend (people you follow) and follower IDs
   def friends_and_followers(username_or_id)
     puts "Getting Friends and Followers for %s..." % username_or_id.to_s
-    friend_ids = @MT.friend_ids(username_or_id).ids
-    follower_ids = @MT.follower_ids(username_or_id).ids
-    { :friends => friend_ids, :followers => follower_ids }
+    begin
+      friend_ids = @MT.friend_ids(username_or_id).ids
+      follower_ids = @MT.follower_ids(username_or_id).ids
+      { :friends => friend_ids, :followers => follower_ids }
+    rescue Twitter::Error::Unauthorized
+      puts "Failed for %s (Protected)" % username_or_id.to_s
+      { :friends => [], :followers => [] }
+    end
   end
   
 end
