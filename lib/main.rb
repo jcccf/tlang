@@ -1,7 +1,9 @@
 require 'twitter'
 require 'json'
 require 'pathname'
+require 'optparse'
 require_relative 'mtwitter'
+require_relative 'mlang'
 
 # Define some constants
 DATA_DIRECTORY = "data"
@@ -10,11 +12,12 @@ USERS_DIR = DATA_DIR + "users"
 USERS_SN_DIR = DATA_DIR + "users_by_screenname"
 FOLLOWERS_DIR = DATA_DIR + "followers"
 STATUSES_DIR = DATA_DIR + "statuses"
+LANGUAGES_DIR = DATA_DIR + "languages"
 
 # Make requisite directories if they don't already exist
 def prepare_dirs
   require 'fileutils'
-  [USERS_DIR, USERS_SN_DIR, FOLLOWERS_DIR, STATUSES_DIR].each do |dir|
+  [USERS_DIR, USERS_SN_DIR, FOLLOWERS_DIR, STATUSES_DIR, LANGUAGES_DIR].each do |dir|
     FileUtils.mkdir_p dir unless File.exist? dir
   end
 end
@@ -22,10 +25,18 @@ end
 # Load from followers
 def traverse_ff
   puts "Looking in followers directory to find people we haven't seen before"
-  Dir.glob(FOLLOWERS_DIR + "*.txt").each do |filename|
+  Dir.glob(FOLLOWERS_DIR + "*.txt").map{|f| [File.mtime(f), f]}.sort{|a,b| a[0] <=> b[0]}.map{|e| e[1]}.each do |filename|
     ff = json_from_file(filename)
     ff["friends"].each { |id| load_user_data(id) }
     ff["followers"].each { |id| load_user_data(id) }
+  end
+end
+
+def traverse_languages
+  puts "Looking in languages directory to load languages for people we haven't seen before"
+  Dir.glob(USERS_DIR + "*.txt").map{|f| [File.mtime(f), f]}.sort{|a,b| a[0] <=> b[0]}.map{|e| e[1]}.each do |filename|
+    uinfo = json_from_file(filename)
+    load_languages(uinfo["id"])
   end
 end
 
@@ -46,8 +57,38 @@ def load_user_data(username_or_id)
   end
 end
 
+def load_languages(user_id)
+  if File.exist? LANGUAGES_DIR + "%s.txt" % user_id.to_s
+    puts "Skipping language test for %s..." % user_id.to_s
+  else
+    print "Loading languages for %s" % user_id.to_s
+    STDOUT.flush
+    languages = []
+    statuses = json_from_file(STATUSES_DIR + "%s.txt" % user_id.to_s)
+    statuses.each do |status|
+      l = status["text"].language
+      languages << { :language => l.best, :best_effort => l.best_effort, :raw => l.raw }
+      print "."
+      STDOUT.flush
+    end
+    json_to_file(languages, LANGUAGES_DIR + "%s.txt" % user_id.to_s)
+    puts "wrote to file"
+  end
+end
+
 if __FILE__ == $0
   prepare_dirs
-  load_user_data("AndreasP")
-  traverse_ff
+
+  OptionParser.new do |opts|
+    opts.banner = "Usage: main.rb [options]"
+    opts.on("-s", "--seed", "Seed") do |v|
+      load_user_data("AndreasP")
+    end
+    opts.on("-f", "--friendsfollowers", "Load Data for Friends and Followers") do |v|
+      traverse_ff
+    end
+    opts.on("-l", "--language", "Languages") do |v|
+      traverse_languages
+    end
+  end.parse!
 end

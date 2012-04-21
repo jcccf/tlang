@@ -2,7 +2,7 @@
 require 'twitter'
 require 'json'
 require 'singleton'
-require_relative 'mtwitter_config'
+require_relative 'config'
 
 class MTwitterRateLimitError < StandardError
 end

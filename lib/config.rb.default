@@ -9,3 +9,5 @@ Twitter.configure do |config|
   config.oauth_token = YOUR_OAUTH_TOKEN
   config.oauth_token_secret = YOUR_OAUTH_TOKEN_SECRET
 end
+
+DETECT_LANGUAGE_API_KEY = YOUR_DETECT_LANGUAGE_DOT_COM_API_KEY
