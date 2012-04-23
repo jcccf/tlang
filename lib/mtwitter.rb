@@ -48,32 +48,37 @@ class MTwitter
   # Get information about a user
   def user(username_or_id)
     puts "Getting Info about User %s" % username_or_id.to_s
-    u = @MT.user(username_or_id)
-    string_data = {
-      :name => u.name,
-      :screen_name => u.screen_name,
-      :location => u.location,
-      :description => u.description,
-      :url => u.url     
-    }
-    user_data = {
-      :id => u.id,
-      :followers_count => u.followers_count,
-      :friends_count => u.friends_count,
-      :protected => u.protected,
-      :listed_count => u.listed_count,
-      :created_at => u.created_at,
-      :favourites_count => u.favourites_count,
-      :utc_offset => u.utc_offset,
-      :time_zone => u.time_zone,
-      :geo_enabled => u.geo_enabled,
-      :verified => u.verified,
-      :statuses_count => u.statuses_count,
-      :lang => u.lang,
-      :is_translator => u.is_translator
-    }
-    string_data.each { |k,v| v.nil? ? (user_data[k] = nil) : (user_data[k] = v) }
-    user_data
+    begin
+      u = @MT.user(username_or_id)
+      string_data = {
+        :name => u.name,
+        :screen_name => u.screen_name,
+        :location => u.location,
+        :description => u.description,
+        :url => u.url     
+      }
+      user_data = {
+        :id => u.id,
+        :followers_count => u.followers_count,
+        :friends_count => u.friends_count,
+        :protected => u.protected,
+        :listed_count => u.listed_count,
+        :created_at => u.created_at,
+        :favourites_count => u.favourites_count,
+        :utc_offset => u.utc_offset,
+        :time_zone => u.time_zone,
+        :geo_enabled => u.geo_enabled,
+        :verified => u.verified,
+        :statuses_count => u.statuses_count,
+        :lang => u.lang,
+        :is_translator => u.is_translator
+      }
+      string_data.each { |k,v| v.nil? ? (user_data[k] = nil) : (user_data[k] = v) }
+      user_data
+    rescue Twitter::Error::Unauthorized, Twitter::Error::Forbidden
+      puts "Suspended?"
+      nil
+    end
   end
   
   # Parse Place JSON
@@ -134,27 +139,31 @@ class MTwitter
     puts "Getting Last %d Statuses for User %s..." % [count, user.to_s]
     begin
       statuses = @MT.user_timeline(user, {:count => count, :trim_user => true, :include_rts => true, :include_entities => true})
-      status_data = statuses.map do |s|
-        {
-          :user_id => s.user.id,
-          :created_at => s.created_at,
-          :id => s.id,
-          :text => s.text,
-          :source => s.source,
-          :truncated => s["truncated"],
-          :in_reply_to_user_id => s["in_reply_to_user_id"],
-          :in_reply_to_screen_name => s["in_reply_to_screen_name"],
-          :geo => s["geo"],
-          :coordinates => s["coordinates"],
-          :place => parse_place(s["place"]),
-          :contributors => s["contributors"],
-          :retweet_count => s["retweet_count"],
-          :entities => parse_entities(s.attrs["entities"]),
-          :retweeted_status => parse_retweeted_status(s["retweeted_status"])
-        }
+      if statuses.size > 0
+        status_data = statuses.map do |s|
+          {
+            :user_id => s.user.id,
+            :created_at => s.created_at,
+            :id => s.id,
+            :text => s.text,
+            :source => s.source,
+            :truncated => s["truncated"],
+            :in_reply_to_user_id => s["in_reply_to_user_id"],
+            :in_reply_to_screen_name => s["in_reply_to_screen_name"],
+            :geo => s["geo"],
+            :coordinates => s["coordinates"],
+            :place => parse_place(s["place"]),
+            :contributors => s["contributors"],
+            :retweet_count => s["retweet_count"],
+            :entities => parse_entities(s.attrs["entities"]),
+            :retweeted_status => parse_retweeted_status(s["retweeted_status"])
+          }
+        end
+        status_data
+      else
+        []
       end
-      status_data
-    rescue Twitter::Error::Unauthorized
+    rescue Twitter::Error::Unauthorized, Twitter::Error::Forbidden
       puts "Failed for %s (Protected)" % user.to_s
       []
     end
@@ -167,7 +176,7 @@ class MTwitter
       friend_ids = @MT.friend_ids(username_or_id).ids
       follower_ids = @MT.follower_ids(username_or_id).ids
       { :friends => friend_ids, :followers => follower_ids }
-    rescue Twitter::Error::Unauthorized
+    rescue Twitter::Error::Unauthorized, Twitter::Error::Forbidden
       puts "Failed for %s (Protected)" % username_or_id.to_s
       { :friends => [], :followers => [] }
     end

@@ -33,8 +33,15 @@ class MDetectLanguage
   def language(string)
     uri = URI.parse(URI.escape("http://ws.detectlanguage.com/0.2/detect?q=%s&key=%s" % [string, DETECT_LANGUAGE_API_KEY]))
     response = Net::HTTP.get_response(uri)
-    result = case response
-    when Net::HTTPSuccess then response.body
+    result = nil
+    while result.nil?
+      result = case response
+      when Net::HTTPSuccess
+        response.body
+      else
+        puts "Sleeping for half an hour"
+        sleep(1800)
+      end
     end
     MLanguages.new(JSON.parse(result))
   end
