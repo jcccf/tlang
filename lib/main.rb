@@ -14,11 +14,12 @@ USERS_SN_DIR = DATA_DIR + "users_by_screenname"
 FOLLOWERS_DIR = DATA_DIR + "followers"
 STATUSES_DIR = DATA_DIR + "statuses"
 LANGUAGES_DIR = DATA_DIR + "languages"
+LANGUAGES_LDIG_DIR = DATA_DIR + "languages_ldig"
 
 # Make requisite directories if they don't already exist
 def prepare_dirs
   require 'fileutils'
-  [USERS_DIR, USERS_SUSPENDED_DIR, USERS_SN_DIR, FOLLOWERS_DIR, STATUSES_DIR, LANGUAGES_DIR].each do |dir|
+  [USERS_DIR, USERS_SUSPENDED_DIR, USERS_SN_DIR, FOLLOWERS_DIR, STATUSES_DIR, LANGUAGES_DIR, LANGUAGES_LDIG_DIR].each do |dir|
     FileUtils.mkdir_p dir unless File.exist? dir
   end
 end
@@ -33,11 +34,19 @@ def traverse_ff
   end
 end
 
-def traverse_languages
+def traverse_languages # Uses detect language API
   puts "Looking in languages directory to load languages for people we haven't seen before"
   Dir.glob(USERS_DIR + "*.txt").map{|f| [File.mtime(f), f]}.sort{|a,b| a[0] <=> b[0]}.map{|e| e[1]}.each do |filename|
     uinfo = json_from_file(filename)
     load_languages(uinfo["id"])
+  end
+end
+
+def traverse_languages_ldig # Uses LDig
+  puts "Looking in languages directory to load languages for people we haven't seen before"
+  Dir.glob(USERS_DIR + "*.txt").map{|f| [File.mtime(f), f]}.sort{|a,b| a[0] <=> b[0]}.map{|e| e[1]}.each do |filename|
+    uinfo = json_from_file(filename)
+    load_languages_ldig(uinfo["id"])
   end
 end
 
@@ -83,6 +92,19 @@ def load_languages(user_id)
   end
 end
 
+def load_languages_ldig(user_id)
+  if File.exist? LANGUAGES_LDIG_DIR + "%s.txt" % user_id.to_s
+    puts "Skipping ldig language test for %s..." % user_id.to_s
+  else
+    print "Loading ldig languages for %s..." % user_id.to_s
+    statuses = json_from_file(STATUSES_DIR + "%s.txt" % user_id.to_s)
+    status_texts = statuses.map { |status| status["text"]}
+    languages = MLdig.instance.languages(status_texts)
+    json_to_file(languages, LANGUAGES_LDIG_DIR + "%s.txt" % user_id.to_s)
+    puts "wrote to file"
+  end
+end
+
 if __FILE__ == $0
   prepare_dirs
 
@@ -93,6 +115,9 @@ if __FILE__ == $0
     end
     opts.on("-f", "--friendsfollowers", "Load Data for Friends and Followers") do |v|
       traverse_ff
+    end
+    opts.on("-d", "--language", "Languages") do |v|
+      traverse_languages_ldig
     end
     opts.on("-l", "--language", "Languages") do |v|
       traverse_languages

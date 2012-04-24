@@ -35,7 +35,18 @@ class TwitterRL
     update_rate_count if @recheck_in == 0
     @ratecount -= 1
     @recheck_in -= 1
-    args.empty? ? @decorated.send(method) : @decorated.send(method, *args) # This MUST BE THE LAST LINE
+    
+    done, result = false, nil
+    while not done do
+      begin
+        result = args.empty? ? @decorated.send(method) : @decorated.send(method, *args) # This MUST BE THE LAST LINE
+        done = true
+      rescue Twitter::Error::ServiceUnavailable
+        puts "Service Unavailable, sleeping for a while..."
+        sleep 3600
+      end
+    end
+    result
   end
 end
 
