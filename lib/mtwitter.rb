@@ -86,7 +86,7 @@ class MTwitter
       }
       string_data.each { |k,v| v.nil? ? (user_data[k] = nil) : (user_data[k] = v) }
       user_data
-    rescue Twitter::Error::Unauthorized, Twitter::Error::Forbidden
+    rescue Twitter::Error::Unauthorized, Twitter::Error::Forbidden, Twitter::Error::NotFound
       puts "Suspended?"
       nil
     end

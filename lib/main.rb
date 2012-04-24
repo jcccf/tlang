@@ -57,7 +57,7 @@ def load_user_data(username_or_id)
   else
     t = MTwitter.new
     uinfo = t.user(username_or_id)
-    if uinfo.nil? # Invalid/suspended user, so add to suspended dir
+    if uinfo.nil? # Invalid/suspended/notfound user, so add to suspended dir
       File.open(USERS_SUSPENDED_DIR + "%s.txt" % username_or_id.to_s, 'w') do |f|
         f.puts "1"
       end
