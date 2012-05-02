@@ -1,4 +1,4 @@
-function [F,J] = NashCondition(p, follows, langs, logt, constants)
+function [F,J] = NashCondition(p, follows, langs, logt, constants, k)
 % follows: n-by-m (sparse) 0-1 matrix.  follows(j,i) = 1 if i follows j
 %          m = total number of users in graph
 %          n = total number of bilingual users who are followed-by
@@ -8,9 +8,15 @@ function [F,J] = NashCondition(p, follows, langs, logt, constants)
 
 %   j in {1,...,m},  i in {1,...,n}
 [n,m] = size(follows);
-F = zeros(n,1);
+F = -k.*(1-2*p);
 if nargout > 1
-    J = zeros(n,n);
+    if length(k) == 1
+        J = 2*k*eye(n,n);
+    elseif length(k) == n
+        J = diag(2*k);
+    else
+        disp('ERROR: length of k is not 1 or n');
+    end
 end
 q = 1-p;
 for i=1:m
