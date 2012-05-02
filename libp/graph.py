@@ -2,6 +2,8 @@
 import networkx as nx, json, glob, pygraphviz as pgv, csv
 from collections import Counter
 from mcolor import *
+from plot import *
+from graph_draw import *
 
 #
 # Constants
@@ -17,6 +19,26 @@ lang_to_color = { "da":"#ff219e", "en":"#29f3f6" }
 #
 # Functions
 #
+
+# Return amount of switching and language proportions
+# Switching is the number of times the language changes as we go through the array
+# If proportional is true, return fractions instead of absolute numbers
+def language_info(lang_array, proportional=True):
+  langs = [l for l in lang_array if l in valid_langs]
+  lang_counts = Counter(langs)
+  if len(langs) > 0:
+    prev_lang, switches = langs[0], 0
+    for l in langs:
+      if l != prev_lang:
+        switches += 1
+        prev_lang = l
+    if proportional is True:
+      if switches > 0:
+        switches /= (len(langs)-1.0) # Switch ratio - # of switches to total number of possible switches
+      lang_counts = { k : float(v)/len(langs) for k, v in lang_counts.iteritems() }
+    return (lang_counts, switches)
+  else:
+    return (None, None)
 
 def load_graph(remove_disconnected=True):
   g = nx.DiGraph()
@@ -66,10 +88,11 @@ def filter_graph_by_language(g):
   n2id = {}
   for n, data in g.nodes_iter(data=True):
     if 'languages' in data:
-      langy = [x[0] for x in sorted(data['languages'].iteritems(), key=lambda x: -x[1])[:2]]
-      langs = sorted([l for l in langy if l in valid_langs])
+      langy = [x for x in sorted(data['languages'].iteritems(), key=lambda x: -x[1])[:2]]
+      langfreqs = {l:c for l,c in langy if l in valid_langs}
+      langs = sorted([l for l,c in langy if l in valid_langs])
       if len(langs) > 0:
-        g2.add_node(n, id=data['id'], languages=langs)
+        g2.add_node(n, id=data['id'], languages=langs, lang_freqs=langfreqs)
         n2id[n] = True
   # Make edges between nodes that have languages
   for n1, n2 in g.edges_iter():
@@ -77,47 +100,23 @@ def filter_graph_by_language(g):
       g2.add_edge(n1, n2)
   return g2
 
-def graphviz_labels(A, filename):
-  print "Preparing graph with labels..."
-  A.edge_attr['color'] = '#50505050'
-  A.node_attr['shape'] = 'circle'
-  A.edge_attr['arrowsize'] = '0.3'
-  A.node_attr['forcelabels'] = 'true'
-  A.node_attr['fontname'] = 'Helvetica'
-  A.node_attr['fontsize'] = '9'
-  A.node_attr['style'] = 'filled'
-  A.layout(prog="fdp")
-  A.draw(filename)
-  
-def graphviz(A, filename):
-  print "Preparing graph..."
-  A.edge_attr['color'] = '#50505050'
-  A.node_attr['shape'] = 'point'
-  A.edge_attr['arrowsize'] = '0.3'
-  A.layout(prog="fdp")
-  A.draw(filename)
-
-# Prepare PyGraphViz Graph
-def generate_pygraphviz(g, clustering=True):
-  A = nx.to_agraph(nx.DiGraph())
-
-  print "Adding nodes..."
-  clusters = {}
+def add_language_ability_to_graph(g):
+  print "Adding language ability..."
   for n, data in g.nodes_iter(data=True):
-    colors = [lang_to_color[lang] for lang in data['languages']] # Colors for languages of interest
-    clusters.setdefault(tuple(sorted(colors)), []).append(n)
-    A.add_node(n, color=color_mix(*colors))
-
-  # Cluster
-  if clustering is True:
-    for i, (k, v) in enumerate(clusters.iteritems()):
-      A.subgraph(nbunch=v, name="cluster%d" % i, color="invis")
-
-  print "Adding edges..."
-  for n1, n2 in g.edges_iter():
-    A.add_edge(n1, n2)
-  
-  return A
+    # Among monolingual friends, if more than 5 speak some language, add it
+    ability = data['languages']
+    monos = []
+    for m in g.successors(n):
+      if len(g.node[m]['languages']) == 1:
+        monos.append(g.node[m]['languages'][0])
+    monos = Counter(monos)
+    for k, v in monos.iteritems():
+      if v > 5 and k not in ability:
+        ability.append(k)
+        # print "Adding! ", k
+    ability = sorted(ability)
+    g.node[n]['lang_ability'] = ability
+  return g
 
 def graph_with_lang_to_csv(g, filename):
   n2id, n2id_counter = {}, 1
@@ -127,7 +126,11 @@ def graph_with_lang_to_csv(g, filename):
       if n not in n2id:
         n2id[n] = n2id_counter
         n2id_counter += 1
-      writer.writerow(["N", n2id[n], "|".join(data['languages'])])
+      if 'en' in data['lang_freqs']:
+        p = float(data['lang_freqs']['en']) / sum(data['lang_freqs'].values())
+      else:
+        p = 0.0
+      writer.writerow(["N", n2id[n], p, "|".join(data['lang_ability'])])
     for n1, n2 in g.edges_iter():
       if n1 in n2id and n2 in n2id:
         writer.writerow(["E", n2id[n1], n2id[n2]])
@@ -161,15 +164,24 @@ def graph_degree(g):
 if __name__ == '__main__':
   g = load_graph(remove_disconnected=True)
   g = filter_graph_by_language(g)
+  g = add_language_ability_to_graph(g)
+  
+
   # bc, ec = graph_betweenness(g)
-  ac, bc, ec = graph_degree(g)
-  for k, v in ac.iteritems():
-    print k, sum(v)/len(v)
-  for k, v in bc.iteritems():
-    print k, sum(v)/len(v)
-  for k, v in ec.iteritems():
-    print k, sum(v)/len(v)
-  # graph_with_lang_to_csv(g, 'graph.txt')
+  # for k, v in bc.iteritems():
+  #   print k, sum(v)/len(v)
+  # for k, v in ec.iteritems():
+  #   print k, sum(v)/len(v)
+  # 
+  # ac, bc, ec = graph_degree(g)
+  # for k, v in ac.iteritems():
+  #   print k, sum(v)/len(v)
+  # for k, v in bc.iteritems():
+  #   print k, sum(v)/len(v)
+  # for k, v in ec.iteritems():
+  #   print k, sum(v)/len(v)
+  
+  graph_with_lang_to_csv(g, 'graph.txt')
   # A = generate_pygraphviz(g, clustering=True)
   # graphviz(A, "graph.svg")
   # A = generate_pygraphviz(g)
