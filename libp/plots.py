@@ -3,7 +3,7 @@ from collections import Counter
 import numpy as np, math
 import csv
 
-# Plot scatter plot of switch ratio against proportion using a target language
+# Plot scatter plot of switch ratio against proportion of tweets in the target language
 def switch_to_prop(target="en"):
   xy_list = []
   for filename in glob.glob("%s/*.txt" % LANGUAGES_LDIG_DIR):
@@ -20,6 +20,47 @@ def switch_to_prop(target="en"):
       writer.writerow(xy)
   DistributionPlot.scatter_plot('switch_to_prop.eps', xy_list, plot_lines=False)
 
+# Estimate the deviation of the benefit function in the infinite consumption model from the optimal function value
+def estimate_infinite_consumption_deviation_optimum():
+  # Utility of a single player
+  # p is the user's value, p_rest_list is a list of (the sum of friends' ps - p,total_friends) for each follower
+  def utility(p,q_A,q_B,n):
+    return n*(q_A*math.log(p*100)+q_B*math.log((1-p)*100))
+
+  g = load_graph(remove_disconnected=True)
+  g = filter_graph_by_language(g)
+  g = add_language_ability_to_graph(g)
+  
+  with open('infdev.txt', 'w') as f:
+    writer = csv.writer(f)
+    writer.writerow(['p', 'utility', 'opt_p', 'opt_utility', 'epsilon'])
+    for node, data in g.nodes_iter(data=True):
+      if len(data['lang_ability']) > 1 and len(g.predecessors(node)) > 0:
+        if 'en' in data['lang_freqs']:
+          p = float(data['lang_freqs']['en']) / sum(data['lang_freqs'].values())
+        else:
+          p = 0.001 # Don't set this to zero to avoid log error
+        if p == 1.0: p = 0.999 # Avoid log error    
+        langs = Counter([tuple(sorted(g.node[m]['lang_ability'])) for m in g.predecessors(node)])
+        q_A = float(langs[('en',)] + langs[('da','en')])/sum(langs.values())
+        q_B = float(langs[('da',)] + langs[('da','en')])/sum(langs.values())
+        opt_p = q_A/(q_A+q_B)
+        if opt_p == 0.0: opt_p = 0.001
+        if opt_p == 1.0: opt_p = 0.999
+        curr, opt = utility(p,q_A,q_B,1.0), utility(opt_p,q_A,q_B,1.0)
+        writer.writerow([p, curr, opt_p, opt, 1.0-curr/opt])
+
+# Plot deviations from estimate_infinite_consumption_deviation_optimum
+def plot_infdev():
+  with open('infdev.txt', 'r') as f:
+    reader = csv.DictReader(f)
+    ks = []
+    for row in reader:
+      ks.append(float(row['epsilon']))
+    DistributionPlot.histogram_plot("infdevs.eps", ks, bins=30, normed=0, color='b', label='Distribution of $\epsilon$', ylim=None, xlim=[0,1.0], xlabel=None, ylabel=None, histtype='stepfilled')
+    print "Mean deviation is", sum(ks)/len(ks)
+
+# Estimate epsilon for each node in epsilon-Nash under the finite consumption model
 def estimate_finite_consumption_epsilon_nash():
   # Utility of a single player
   # p is the user's value, p_rest_list is a list of (the sum of friends' ps - p,total_friends) for each follower
@@ -47,7 +88,7 @@ def estimate_finite_consumption_epsilon_nash():
     writer = csv.writer(f)
     writer.writerow(['p', 'utility', 'max_p', 'max_utility', 'epsilon'])
     for node, data in g.nodes_iter(data=True):
-      if len(data['lang_ability']) == 2 and len(g.predecessors(node)) > 0:
+      if len(data['lang_ability']) > 1 and len(g.predecessors(node)) > 0:
         p, p_rest_list = data['p'], []
         # Load p_rest for each follower
         for m in g.predecessors(node): # for each follower
@@ -64,6 +105,7 @@ def estimate_finite_consumption_epsilon_nash():
         writer.writerow([p, current_utility, max_p, max_utility, 1.0-current_utility/max_utility])
         print p, current_utility, max_p, max_utility
 
+# Plot distribution of epsilon for estimate_finite_consumption_epsilon_nash
 def plot_epsilons():
   with open('epsilon.txt', 'r') as f:
     reader = csv.DictReader(f)
@@ -73,8 +115,8 @@ def plot_epsilons():
     DistributionPlot.histogram_plot("epsilons.eps", ks, bins=30, normed=1, color='b', label='Distribution of $\epsilon$', ylim=None, xlim=None, xlabel=None, ylabel=None, histtype='stepfilled')
     print "Mean epsilon is", sum(ks)/len(ks)
 
-# Estimate r in the Immorlica bilingual model
-# TODO can set q by using proportion of monolinguals
+# Estimate r in the Immorlica bilingual diffusion model
+# q is the utility of language B, 1-q is the utility of language A
 def estimate_r_bilingual(q=0.5):
   g = load_graph(remove_disconnected=True)
   g = filter_graph_by_language(g)
@@ -165,7 +207,8 @@ def estimate_ks_bilingual():
     print "Unsupported Examples", unsupported # Which do not support the hypothesis that p must exceed 
     print "Supported", supported
     print "Monolinguals", Counter(monos)
-           
+
+# Plot distribution of ks for estimate_ks_bilingual
 def plot_ks():
   with open('ks.txt', 'r') as f:
     reader = csv.DictReader(f)
@@ -177,10 +220,14 @@ def plot_ks():
 
 if __name__ == '__main__':
   # switch_to_prop()
+  
   # estimate_ks_bilingual()
   # plot_ks()
   
   # estimate_r_bilingual(0.5)
   
   # estimate_finite_consumption_epsilon_nash()
-  plot_epsilons()
+  # plot_epsilons()
+  
+  # estimate_infinite_consumption_deviation_optimum()
+  # plot_infdev()

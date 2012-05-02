@@ -82,6 +82,9 @@ def load_graph(remove_disconnected=True):
   
   return g
 
+# Filters graph to contain only languages in the variable valid_langs
+# Adds 'languages' key for each node (array of languages node uses in tweets)
+# Adds 'lang_freqs' key for each node (hash of language > # of tweets in that language)
 def filter_graph_by_language(g):
   print "Filtering by valid languages..."
   g2 = nx.DiGraph()
@@ -100,6 +103,7 @@ def filter_graph_by_language(g):
       g2.add_edge(n1, n2)
   return g2
 
+# Adds 'lang_ability' key for each node (array of languages a node knows)
 def add_language_ability_to_graph(g):
   print "Adding language ability..."
   for n, data in g.nodes_iter(data=True):
