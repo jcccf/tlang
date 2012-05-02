@@ -26,6 +26,8 @@ def estimate_infinite_consumption_deviation_optimum():
   # p is the user's value, p_rest_list is a list of (the sum of friends' ps - p,total_friends) for each follower
   def utility(p,q_A,q_B,n):
     return n*(q_A*math.log(p*100)+q_B*math.log((1-p)*100))
+  # def utility(p,q_A,q_B,n): # Log user utility
+  #   return math.log(q_A*n)*math.log(p*100)+math.log(q_B*n)*math.log((1-p)*100)
 
   g = load_graph(remove_disconnected=True)
   g = filter_graph_by_language(g)
@@ -45,6 +47,11 @@ def estimate_infinite_consumption_deviation_optimum():
         q_A = float(langs[('en',)] + langs[('da','en')])/sum(langs.values())
         q_B = float(langs[('da',)] + langs[('da','en')])/sum(langs.values())
         opt_p = q_A/(q_A+q_B)
+        # if q_A == 0.0: q_A = 0.0001
+        # if q_B == 0.0: q_B = 0.0001
+        # if q_A == 1.0: q_A = 0.9999
+        # if q_B == 1.0: q_B = 0.9999
+        # opt_p = math.log(q_A)/(math.log(q_A)+math.log(q_B))
         if opt_p == 0.0: opt_p = 0.001
         if opt_p == 1.0: opt_p = 0.999
         curr, opt = utility(p,q_A,q_B,1.0), utility(opt_p,q_A,q_B,1.0)
@@ -229,5 +236,5 @@ if __name__ == '__main__':
   # estimate_finite_consumption_epsilon_nash()
   # plot_epsilons()
   
-  # estimate_infinite_consumption_deviation_optimum()
-  # plot_infdev()
+  estimate_infinite_consumption_deviation_optimum()
+  plot_infdev()
