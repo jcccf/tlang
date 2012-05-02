@@ -1,0 +1,7 @@
+x = seq(0,1,by=0.005)
+y = 0.8*log(x) + 0.4*log((1-x))
+plot(x,y, type='l', ylim=c(-4, 2), col=3, ylab='U', xlab='p')
+y2 = 8*x*(1-x)
+lines(x, y2, type='l', col=2)
+y3 = 0.8*log(x) + 0.4*log((1-x)) - 8*x*(1-x)
+lines(x, y3, type='l', col=4)
