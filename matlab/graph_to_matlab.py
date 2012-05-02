@@ -10,6 +10,7 @@ class GraphData(object):
     self.nodemap = dict()
     self.inv_nodemap = dict()
     self.n = 0 # No. of bilingual people with followers
+    self.constants = dict()
     
   def sort_nodes(self):
     # Sort the node ids so that bilingual people
@@ -18,6 +19,14 @@ class GraphData(object):
     ids = range(1,m+1)
     # Find list of people who are bilingual
     is_bilingual = [ 1 if sum(self.langs[i]) == 2 else 0 for i in ids ]
+    for i in ids:
+      constants = list([0,0])
+      for j in self.follows[i]:
+        if is_bilingual[j-1] == 0: #Not bilingual
+          assert (self.p[j] == 0 or self.p[j] == 1) #should be monolingual proportions
+          constants[0] += self.langs[j][0]
+          constants[1] += self.langs[j][1]
+      self.constants[i] = constants
     # Find list of people who have followers
     followed = defaultdict(list)
     for i in ids:
@@ -64,6 +73,11 @@ class GraphData(object):
     print "nodemap = [",
     for i in ids:
       print self.inv_nodemap[i],
+    print "]';"
+    print
+    print "constants = ["
+    for i in ids:
+      print "%g %g"%tuple(self.constants[i])
     print "]';"
     print
 

@@ -1,4 +1,4 @@
-function [F,J] = NashCondition(p, follows, langs, logt)
+function [F,J] = NashCondition(p, follows, langs, logt, constants)
 % follows: n-by-m (sparse) 0-1 matrix.  follows(j,i) = 1 if i follows j
 %          m = total number of users in graph
 %          n = total number of bilingual users who are followed-by
@@ -15,8 +15,8 @@ end
 q = 1-p;
 for i=1:m
     if langs(1,i) == 1
-        sj = follows(:,i)' * p;
-        if sj > eps
+        sj = follows(:,i)' * p + constants(1,i);
+        if sj > 1e-8
             sj2 = sj*sj;
             F = F + (1/sj2)*follows(:,i) .* ( (log(sj)+logt)*(sj-p) + p );
             if nargout > 1
@@ -29,8 +29,8 @@ for i=1:m
         end
     end
     if langs(2,i) == 1
-        rj = follows(:,i)' * q;
-        if rj > eps
+        rj = follows(:,i)' * q + constants(2,i);
+        if rj > 1e-8
             rj2 = rj*rj;
             F = F - (1/rj2)*follows(:,i) .* ( (log(rj)+logt)*(rj-q) + q );
             if nargout > 1
