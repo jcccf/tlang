@@ -130,7 +130,7 @@ def estimate_r_bilingual(q=0.5):
   g = add_language_ability_to_graph(g)
   
   r_mins, r_maxs = [], []
-  x, y = 0, 0
+  x, y, z, z2 = 0, 0, 0, 0
   for node, data in g.nodes_iter(data=True):
     langs = Counter([tuple(sorted(g.node[m]['lang_ability'])) for m in g.predecessors(node)])
     if len(data['lang_ability']) == 2 and len(langs) > 0:
@@ -148,10 +148,12 @@ def estimate_r_bilingual(q=0.5):
         else:
           raise Exception()
         x += 1
+        if q_A > 0.0 and q_B > 0.0: z += 1
       else:
         # Bilingual : 0.5 - r > 0.5p_A or 0.5p_B
         r_maxs.append(max(max(q,1-q)*q_AB + (1-q)*q_Aonly + q*q_Bonly - (1-q)*q_A, max(q,1-q)*q_AB + (1-q)*q_Aonly + q*q_Bonly - q*q_B))
         y += 1
+        if q_A > 0.0 and q_B > 0.0: z2 += 1
     
   r_mins = sorted(r_mins)[int(0.05*len(r_mins)):]
   r_maxs = sorted(r_maxs)[:int(0.95*len(r_maxs))]
@@ -160,6 +162,7 @@ def estimate_r_bilingual(q=0.5):
   print r_mins
   print r_maxs
   print "Bilingual but Tweet in 1", x, "Bilingual and Tweet in 2", y
+  print "Bilingual, Tweet in Single, Bilingual Followers", z, "Bilingual, Tweet in Bilingual, Bilingual Followers", z2
 
 # Estimate k's in the infinite consumption model
 def estimate_ks_bilingual():
@@ -231,10 +234,10 @@ if __name__ == '__main__':
   # estimate_ks_bilingual()
   # plot_ks()
   
-  # estimate_r_bilingual(0.5)
+  estimate_r_bilingual(0.5)
   
   # estimate_finite_consumption_epsilon_nash()
   # plot_epsilons()
   
-  estimate_infinite_consumption_deviation_optimum()
-  plot_infdev()
+  # estimate_infinite_consumption_deviation_optimum()
+  # plot_infdev()

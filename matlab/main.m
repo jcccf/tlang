@@ -1,4 +1,4 @@
-%% load data
+;%% load data
 data;
 t = 100;
 logt = log(t);
@@ -48,6 +48,53 @@ options = optimset('Display','iter',...
 %% Assuming given p0 is Nash, find values of k that makes it satisfy Nash
 k = Findk(p0(1:n), follows, langs, logt, constants);
 
+%% Load Data and Plot for Infinite Consumption Model
+data;
+[n,m] = size(follows);
+infcon_p = []; % Original proportions
+infcon_o = []; % Optimal proportions
+% Select users who speak both languages
+for i = 1:n
+    infcon_p = [infcon_p; p0(i)];
+    followers = follows(i,:);
+    [~, j, ~] = find(followers);
+    total_followers = length(j);
+    qA = 0;
+    qB = 0;
+    for k = j
+        if langs(1,k) == 1
+            qA = qA + 1;
+        end
+        if langs(2,k) == 1
+            qB = qB + 1;
+        end
+    end
+    q0 = qA/(qA+qB);
+    infcon_o = [infcon_o; q0];
+end
+figure;
+subplot(1,2,1);
+hold all;
+title('Proportions (sorted by Opt)');
+[~,idx] = sort(infcon_o);
+plot((infcon_p(idx)),'o');
+plot((infcon_o(idx)),'o');
+% plot((p0(idx)),'.');
+legend('Init','Opt','Location','NorthWest');
+hold off;
+
+subplot(1,2,2);
+hold all;
+title('Proportions (independent sort)');
+[~,idx] = sort(infcon_o);
+plot(sort(infcon_p(idx)),'o');
+plot(sort(infcon_o(idx)),'o');
+legend('Init','Opt','Location','NorthWest');
+hold off;
+% Plot p
+
+% Plot qA/(qA+qB)
+
 %% Plot results
 figure;
 % Filter positive and not inf
@@ -60,9 +107,9 @@ ylabel('Frequency');
 figure;
 hold all;
 title('Nash condition (sorted)');
-plot(sort(NashCondition(pNash, follows, langs, logt, constants, global_k)),'.')
-plot(sort(NashCondition(pOpt, follows, langs, logt, constants, global_k)),'.')
-plot(sort(NashCondition(p0(1:n), follows, langs, logt, constants, global_k)),'.')
+plot(sort(NashCondition(pNash, follows, langs, logt, constants, global_k)),'o')
+plot(sort(NashCondition(pOpt, follows, langs, logt, constants, global_k)),'o')
+plot(sort(NashCondition(p0(1:n), follows, langs, logt, constants, global_k)),'o')
 legend('Nash','Opt','Init','Location','NorthWest');
 ylim([-30,40]);
 hold off;
@@ -93,18 +140,19 @@ subplot(1,2,1);
 hold all;
 title('Proportions (sorted by Opt)');
 [dum,idx] = sort(pOpt);
-plot((pNash(idx)),'.');
-plot((pOpt(idx)),'.');
+plot((p0(idx)),'o');
+plot((pOpt(idx)),'o');
+plot((pNash(idx)),'o');
 % plot((p0(idx)),'.');
-legend('Nash','Opt','Location','NorthWest');
+legend('Init','Opt','Nash','Location','NorthWest');
 hold off;
 
 subplot(1,2,2);
 hold all;
 title('Proportions (sorted individually)');
 [dum,idx] = sort(pOpt);
-plot(sort(pNash(idx)),'.');
-plot(sort(pOpt(idx)),'.');
-plot(sort(p0(idx)),'.');
-legend('Nash','Opt','Init','Location','NorthWest');
+plot(sort(p0(idx)),'o');
+plot(sort(pOpt(idx)),'o');
+plot(sort(pNash(idx)),'o');
+legend('Init','Opt','Nash','Location','NorthWest');
 hold off;
