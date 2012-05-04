@@ -6,6 +6,7 @@ function [f,g] = SocialWelfareObjGrad( ...
 % langs  : 2-by-m 0-1 matrix.  langs(j,i) = 1 if i speaks language j.
 % logt   : Some constant multiplier (see paper)
 % p      : n-by-1 vector of current iterate proportions in [0,1]
+% constants: 2-by-m matrix of constants w.r.t. optimization
 
 %   j in {1,...,m},  i in {1,...,n}
 [n,m] = size(follows);
