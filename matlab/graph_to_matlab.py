@@ -1,4 +1,5 @@
 from collections import defaultdict
+import argparse
 
 filename = "graph.txt"
 
@@ -63,28 +64,35 @@ class GraphData(object):
     print "follows = sparse(%d,%d);"%(self.n,m)
     for i in ids:
       for j in self.follows[i]:
-        if j <= self.n: print "follows(%d,%d) = 1;"%(j,i)
+        if self.n == 0 or j <= self.n: print "follows(%d,%d) = 1;"%(j,i)
     print
     print "p0 = [",
     for i in ids:
       print "%g"%self.p[i],
     print "]';"
     print
-    print "nodemap = [",
-    for i in ids:
-      print self.inv_nodemap[i],
-    print "]';"
-    print
-    print "constants = ["
-    for i in ids:
-      print "%g %g"%tuple(self.constants[i])
-    print "]';"
-    print
+    if len(self.nodemap) == m:
+      print "nodemap = [",
+      for i in ids:
+        print self.inv_nodemap[i],
+      print "]';"
+      print
+    if len(self.constants) == m:
+      print "constants = ["
+      for i in ids:
+        print "%g %g"%tuple(self.constants[i])
+      print "]';"
+      print
 
 if __name__ == "__main__":
+  argparser = argparse.ArgumentParser()
+  argparser.add_argument('-s', action='store_false', dest="sort", help="do not sort")
+  argparser.add_argument('-f', type=str, action='store', default="graph.txt", dest="filename", help="input graph filename")
+  args = argparser.parse_args()
+  
   data = GraphData()
   langsdict = { 'da':2, 'en':1 }
-  with open(filename,"r") as f:
+  with open(args.filename,"r") as f:
     for line in f:
       l = line.split(",")
       if l[0] == "N":
@@ -104,6 +112,7 @@ if __name__ == "__main__":
       elif l[0] == "E":
         i,j = int(l[1]),int(l[2])
         data.follows[i].append(j)
-  data.sort_nodes()
+  if args.sort:
+    data.sort_nodes()
   data.print_matlab()
   
