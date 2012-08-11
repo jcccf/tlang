@@ -146,10 +146,16 @@ class MTwitter
   end
   
   # Get information about a user's tweets
-  def user_tweets(user, count=10)
-    puts "Getting Last %d Statuses for User %s..." % [count, user.to_s]
+  def user_tweets(user, count=10, since_id=nil, max_id=nil)
+    print "Getting Last %d Statuses for User %s" % [count, user.to_s]
+    print " since %s" % since_id if since_id
+    print " until %s" % max_id if max_id
+    print "\n"
+    options = {:count => count, :trim_user => true, :include_rts => true, :include_entities => true}
+    options[:since_id] = since_id if since_id
+    options[:max_id] = max_id if max_id
     begin
-      statuses = @MT.user_timeline(user, {:count => count, :trim_user => true, :include_rts => true, :include_entities => true})
+      statuses = @MT.user_timeline(user, options)
       if statuses.size > 0
         status_data = statuses.map do |s|
           {

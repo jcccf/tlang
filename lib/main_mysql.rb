@@ -1,6 +1,7 @@
 require 'twitter'
 require 'json'
 require 'mysql'
+require 'time'
 require_relative 'mtwitter'
 require_relative 'mlang'
 
@@ -31,19 +32,39 @@ else
     end
 
     # Add edges
-    fof = t.friends_and_followers(uid)
-    fof[:friends].each do |fid|
-      st = my.prepare "INSERT IGNORE INTO edges (source_id, target_id, by_id) VALUES(?, ?, ?)"
-      st.execute uid, fid, uid
-    end
-    fof[:followers].each do |fid|
-      st = my.prepare "INSERT IGNORE INTO edges (source_id, target_id, by_id) VALUES(?, ?, ?)"
-      st.execute fid, uid, uid
-    end
+    # fof = t.friends_and_followers(uid)
+    # fof[:friends].each do |fid|
+    #   st = my.prepare "INSERT IGNORE INTO edges (source_id, target_id, by_id) VALUES(?, ?, ?)"
+    #   st.execute uid, fid, uid
+    # end
+    # fof[:followers].each do |fid|
+    #   st = my.prepare "INSERT IGNORE INTO edges (source_id, target_id, by_id) VALUES(?, ?, ?)"
+    #   st.execute fid, uid, uid
+    # end
 
     # Add statuses
-    statuses = t.user_tweets(username_or_id, 100)
-    #TODO
+    # If we've added this user before, get most recent saved status and get everything since then
+    # If not, simply get the last 200 tweets
+    st = my.prepare "SELECT id FROM statuses WHERE user_id = ? ORDER BY created_at DESC LIMIT 1"
+    res = st.execute uid
+    if res.num_rows > 0
+      since_id = res.fetch_hash['id']
+      statuses = t.user_tweets(uid, 200, since_id)
+      while statuses.size > 0
+        puts "\tAdding..."
+        statuses.each do |status|
+          st = my.prepare "INSERT INTO statuses (id, user_id, json, created_at) VALUES (?, ?, ?, ?)"
+          st.execute status[:id], uid, JSON.generate(status), status[:created_at].getutc
+        end
+        statuses = t.user_tweets(uid, 200, since_id, statuses[-1][:id]-1)
+      end
+    else
+      statuses = t.user_tweets(uid, 200)
+      statuses.each do |status|
+        st = my.prepare "INSERT INTO statuses (id, user_id, json, created_at) VALUES (?, ?, ?, ?)"
+        st.execute status[:id], uid, JSON.generate(status), status[:created_at].getutc
+      end
+    end
 
     # Mark as completed
     st = my.prepare "UPDATE users SET completed = 1 WHERE user_id = ?"
