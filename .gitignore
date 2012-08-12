@@ -2,4 +2,5 @@ data/*
 *.pyc
 *~
 *.DS_Store
-lib/mtwitter_config.rb
+lib/config.rb
+lib/database.yml
