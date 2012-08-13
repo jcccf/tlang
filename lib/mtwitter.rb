@@ -2,7 +2,11 @@
 require 'twitter'
 require 'json'
 require 'singleton'
+require 'zlib'
 require_relative 'config'
+
+# Structure
+# MTwitter > initializes TwitterRL instance > calls Twitter class
 
 class MTwitterRateLimitError < StandardError
 end
@@ -44,6 +48,9 @@ class TwitterRL
       rescue Twitter::Error::ServiceUnavailable
         puts "Service Unavailable, sleeping for a while..."
         sleep 3600
+      rescue Zlib::GzipFile::Error
+        put "Gzip error, sleeping for a while..."
+        sleep 60
       end
     end
     result

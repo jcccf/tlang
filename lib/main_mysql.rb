@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'twitter'
 require 'json'
 require 'mysql'
@@ -7,20 +8,48 @@ require_relative 'mtwitter'
 require_relative 'mlang'
 
 def mysql_connect
-  dbconf = dbconf = YAML::load(File.open('database.yml'))
-  Mysql::new(dbconf["host"], dbconf["username"], dbconf["password"], dbconf["database"])
+  dbconf = YAML::load(File.open('database.yml'))['mysql']
+  my = Mysql::new(dbconf["host"], dbconf["username"], dbconf["password"], dbconf["database"])
+  my.options(Mysql::SET_CHARSET_NAME, 'utf8')
+  my
 end
 
 user_id = 15286172
 
-def load_user(user_id)
+def run_users_queue
   my = mysql_connect
+  # Get a user from the queue
+  while true do
+    # Get an id from the queue atomically
+    my.query("START TRANSACTION;")
+    res = my.query("SELECT * FROM users_queue WHERE processing = 0 ORDER BY id ASC LIMIT 1")
+    break if res.num_rows == 0
+    user_id = res.fetch_hash['user_id']
+    my.query("UPDATE users_queue SET processing = 1 WHERE user_id = %s" % user_id)
+    my.query("COMMIT")
+
+    # Load users and insert friends
+    friend_ids = load_user(my, user_id.to_i)
+    friend_ids.each do |fid|
+      my.query("INSERT INTO users_queue SET user_id = %s" % fid)
+    end
+    puts "Queued %s friends" % friend_ids.size
+
+    # If all successful, remove from queue
+    my.query("DELETE FROM users_queue WHERE user_id = %s" % user_id)
+  end
+  puts "Ended; Nothing in the queue"
+end
+
+def load_user(my, user_id)
+  fids = []
   st = my.prepare "SELECT * FROM users WHERE user_id = ?"
   res = st.execute user_id
   user = (res.num_rows == 0) ? nil : res.fetch_hash
   if user && (user['invalid'] == 1 || user['completed'] == 1)
     puts "Skipping %s" % user_id
   else
+    puts "Loading %s" % user_id
     t = MTwitter.new
     uinfo = t.user(user_id)
     if uinfo.nil?
@@ -45,6 +74,7 @@ def load_user(user_id)
         st = my.prepare "INSERT IGNORE INTO edges (source_id, target_id, by_id) VALUES(?, ?, ?)"
         st.execute uid, fid, uid
       end
+      fids = fof[:friends]
       fof[:followers].each do |fid|
         st = my.prepare "INSERT IGNORE INTO edges (source_id, target_id, by_id) VALUES(?, ?, ?)"
         st.execute fid, uid, uid
@@ -79,5 +109,8 @@ def load_user(user_id)
       st.execute uid
     end
   end
+  fids
 end
+
+run_users_queue
 

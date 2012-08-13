@@ -2,5 +2,4 @@ data/*
 *.pyc
 *~
 *.DS_Store
-lib/config.rb
 lib/database.yml
