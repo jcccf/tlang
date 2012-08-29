@@ -70,6 +70,7 @@ def load_user(my, user_id)
 
       # Add edges
       fof = t.friends_and_followers(uid)
+      puts "Now loading into MySQL..."
       fof[:friends].each do |fid|
         st = my.prepare "INSERT IGNORE INTO edges (source_id, target_id, by_id) VALUES(?, ?, ?)"
         st.execute uid, fid, uid

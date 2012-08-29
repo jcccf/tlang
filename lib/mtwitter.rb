@@ -48,8 +48,14 @@ class TwitterRL
       rescue Twitter::Error::ServiceUnavailable
         puts "Service Unavailable, sleeping for a while..."
         sleep 3600
+      rescue Twitter::Error::InternalServerError
+        puts "Internal Server Error, sleeping for a while"
+        sleep 1800
       rescue Zlib::GzipFile::Error
-        put "Gzip error, sleeping for a while..."
+        puts "Gzip error, sleeping for a while..."
+        sleep 60
+      rescue EOFError
+        puts "EOF error, sleeping for a while..."
         sleep 60
       end
     end
